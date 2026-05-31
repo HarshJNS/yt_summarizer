@@ -1,0 +1,1570 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TubeAI Summarizer — Turn YouTube Videos into Insights</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts (Outfit and Inter) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet">
+  <!-- Marked.js for Markdown parsing -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Outfit', 'Inter', 'sans-serif'],
+            mono: ['SFMono-Regular', 'Consolas', 'Liberation Mono', 'monospace']
+          },
+          colors: {
+            ytRed: '#FF0000',
+            darkBg: '#0f0f0f',
+            darkCard: '#18181b',
+            darkBorder: '#27272a',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      background-color: #0f0f0f;
+      color: #f4f4f5;
+    }
+
+    .gradient-text {
+      background: linear-gradient(135deg, #a855f7 0%, #3b82f6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #18181b;
+      border-radius: 4px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #3f3f46;
+      border-radius: 4px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #52525b;
+    }
+
+    .fade-in {
+      animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Style marked-rendered content inside card */
+    .prose p {
+      margin-bottom: 1rem;
+      line-height: 1.625;
+      color: #d4d4d8;
+    }
+
+    .prose ul,
+    .prose ol {
+      margin-left: 1.25rem;
+      margin-bottom: 1rem;
+      list-style-type: disc;
+      color: #d4d4d8;
+    }
+
+    .prose li {
+      margin-bottom: 0.375rem;
+    }
+
+    .prose strong {
+      color: #ffffff;
+      font-weight: 600;
+    }
+
+    .prose h3 {
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: #ffffff;
+      margin-top: 1rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .thumbnail-skeleton {
+      background: linear-gradient(90deg, #18181b 25%, #27272a 37%, #18181b 63%);
+      background-size: 400% 100%;
+      animation: shimmer 1.4s ease infinite;
+    }
+
+    @keyframes shimmer {
+      0% {
+        background-position: 100% 0;
+      }
+
+      100% {
+        background-position: 0 0;
+      }
+    }
+  </style>
+</head>
+
+<body class="min-h-screen flex flex-col selection:bg-purple-500/30 selection:text-purple-200">
+
+  <!-- Header Section -->
+  <header class="border-b border-darkBorder bg-black/30 backdrop-blur-md sticky top-0 z-50 transition-all duration-300">
+    <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+      <div class="flex items-center space-x-2.5">
+        <!-- TubeAI Logo -->
+        <div class="bg-ytRed/10 p-1.5 rounded-lg border border-ytRed/20">
+          <svg class="w-6 h-6 text-ytRed" fill="currentColor" viewBox="0 0 24 24">
+            <path
+              d="M23.498 6.163a3.003 3.003 0 0 0-2.11-2.11C19.517 3.545 12 3.545 12 3.545s-7.516 0-9.387.507A3.003 3.003 0 0 0 .502 6.163C0 8.07 0 12 0 12s0 3.93.502 5.837a3.003 3.003 0 0 0 2.11 2.11c1.871.507 9.387.507 9.387.507s7.517 0 9.387-.507a3.003 3.003 0 0 0 2.11-2.11C24 15.93 24 12 24 12s0-3.93-.502-5.837zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+          </svg>
+        </div>
+        <span class="text-xl font-extrabold tracking-tight text-white">TubeAI<span
+            class="text-zinc-400 font-normal">Summarizer</span></span>
+      </div>
+      <div class="hidden sm:flex items-center space-x-4 text-sm text-zinc-400">
+        <span>Instant Video Insights</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-grow max-w-6xl w-full mx-auto px-4 py-10 flex flex-col justify-start">
+
+    <!-- Hero / Intro -->
+    <div class="text-center mb-10">
+      <h1 class="text-4xl sm:text-5xl font-black tracking-tight mb-4">
+        Summarize YouTube Videos <span class="gradient-text font-black">in Seconds</span>
+      </h1>
+      <p class="text-zinc-400 text-lg max-w-2xl mx-auto">
+        Extract instant summaries, structured study briefs, business strategies, productivity takeaways, and full
+        transcripts from any YouTube video.
+      </p>
+    </div>
+
+    <!-- Input Section -->
+    <section class="max-w-3xl w-full mx-auto mb-12">
+      <form id="summarize-form"
+        class="relative flex flex-col sm:flex-row gap-3 p-2 bg-darkCard/80 border border-darkBorder rounded-xl shadow-2xl backdrop-blur-sm">
+        <div class="relative flex-grow flex items-center">
+          <svg class="absolute left-4 w-5 h-5 text-zinc-500" fill="none" stroke="currentColor" stroke-width="2"
+            viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+          </svg>
+          <input type="text" id="video-url"
+            placeholder="Paste YouTube URL here (e.g. https://www.youtube.com/watch?v=...)" required
+            class="w-full pl-12 pr-4 py-3.5 bg-transparent text-white placeholder-zinc-500 rounded-lg focus:outline-none focus:ring-0 text-base" />
+        </div>
+        <button type="submit" id="submit-btn"
+          class="sm:w-auto w-full px-7 py-3.5 rounded-lg bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-500 hover:to-blue-400 font-semibold text-white tracking-wide transition-all duration-300 flex items-center justify-center shadow-lg shadow-purple-500/20 active:scale-[0.98] cursor-pointer">
+          <span id="btn-text">Summarize</span>
+          <!-- Loading Spinner -->
+          <svg id="btn-spinner" class="hidden animate-spin ml-2 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+            </path>
+          </svg>
+        </button>
+      </form>
+    </section>
+
+    <!-- Thumbnail Preview Card (Visible as soon as URL is parsed) -->
+    <section id="video-preview-section" class="hidden max-w-3xl w-full mx-auto mb-10 fade-in">
+      <div
+        class="group overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-950/90 shadow-2xl shadow-black/30 transition-all duration-300 hover:-translate-y-0.5 hover:border-purple-500/40 hover:shadow-purple-500/10">
+        <div class="relative aspect-video overflow-hidden bg-zinc-900">
+          <div id="thumbnail-skeleton" class="absolute inset-0 thumbnail-skeleton"></div>
+
+          <img id="video-thumbnail" src="" alt="YouTube video thumbnail"
+            class="h-full w-full object-cover opacity-0 transition duration-500 group-hover:scale-105" />
+
+          <div id="thumbnail-error"
+            class="hidden absolute inset-0 flex flex-col items-center justify-center bg-zinc-900 px-6 text-center">
+            <p id="thumbnail-error-title" class="text-sm font-semibold text-zinc-100">Thumbnail unavailable</p>
+            <p id="thumbnail-error-description" class="mt-1 text-xs text-zinc-500">
+              Paste a valid YouTube watch, short, or share link.
+            </p>
+          </div>
+        </div>
+
+        <div class="space-y-4 p-5">
+          <div>
+            <h3 id="video-preview-title" class="text-base font-semibold text-white">Video Preview</h3>
+            <p id="video-preview-description" class="mt-1 text-sm text-zinc-400">Ready for AI summarization</p>
+          </div>
+
+          <a id="video-preview-link" href="#" target="_blank" rel="noopener noreferrer"
+            class="inline-flex w-full items-center justify-center rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-zinc-100 transition hover:border-purple-500/50 hover:bg-zinc-800">
+            <span>Open on YouTube</span>
+            <svg class="ml-2 h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" fill="none"
+              stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Note-style Workspace: fast transcript first, AI overview second -->
+    <section id="workspace-state" class="hidden w-full fade-in mb-10">
+      <div class="grid grid-cols-1 xl:grid-cols-[minmax(340px,0.9fr)_minmax(420px,1.1fr)] gap-5">
+        <div class="bg-zinc-950/90 border border-zinc-800 rounded-2xl overflow-hidden shadow-2xl shadow-black/30">
+          <div class="relative aspect-video bg-zinc-900">
+            <div id="workspace-thumbnail-skeleton" class="absolute inset-0 thumbnail-skeleton"></div>
+            <img id="workspace-thumbnail" src="" alt="Selected video thumbnail"
+              class="h-full w-full object-cover opacity-0 transition duration-500" />
+          </div>
+
+          <div class="border-b border-zinc-800 p-4">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 id="workspace-title" class="text-lg font-bold text-white">Video Workspace</h2>
+                <p id="workspace-subtitle" class="text-sm text-zinc-500">Transcript loads first, AI summary follows.</p>
+              </div>
+              <a id="workspace-youtube-link" href="#" target="_blank" rel="noopener noreferrer"
+                class="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-xs font-semibold text-zinc-200 transition hover:border-blue-500/50 hover:text-white">
+                Open on YouTube
+              </a>
+            </div>
+          </div>
+
+          <div class="p-4">
+            <div class="mb-4 inline-flex rounded-xl border border-zinc-800 bg-zinc-900/80 p-1">
+              <button id="workspace-tab-transcript" onclick="switchTranscriptView('transcript')"
+                class="rounded-lg bg-blue-500/15 px-4 py-2 text-sm font-semibold text-blue-300 border border-blue-500/30">
+                Transcript
+              </button>
+              <button id="workspace-tab-chapters" onclick="switchTranscriptView('chapters')"
+                class="rounded-lg px-4 py-2 text-sm font-semibold text-zinc-400 transition hover:bg-zinc-800 hover:text-zinc-100">
+                Chapters
+              </button>
+            </div>
+
+            <div id="workspace-transcript-panel">
+              <div id="transcript-status"
+                class="rounded-xl border border-zinc-800 bg-zinc-900/70 p-4 text-sm text-zinc-400">
+                Paste a YouTube link and summarize to load timestamped transcript text.
+              </div>
+
+              <div id="timestamp-list" class="hidden max-h-[520px] overflow-y-auto pr-2 custom-scrollbar space-y-3">
+                <!-- Timestamped transcript segments render here -->
+              </div>
+            </div>
+
+            <div id="workspace-chapters-panel" class="hidden max-h-[520px] overflow-y-auto pr-2 custom-scrollbar space-y-3">
+              <div class="rounded-xl border border-zinc-800 bg-zinc-900/70 p-4 text-sm text-zinc-400">
+                Chapters will appear after the transcript loads.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-zinc-950/90 border border-zinc-800 rounded-2xl shadow-2xl shadow-black/30">
+          <div class="border-b border-zinc-800 p-4">
+            <div class="grid grid-cols-4 gap-2 rounded-xl bg-zinc-900/80 p-1">
+              <button id="workspace-panel-summary" onclick="switchWorkspacePanel('summary')"
+                class="rounded-lg bg-blue-500/15 px-3 py-2 text-sm font-semibold text-blue-300 border border-blue-500/30">
+                Summary
+              </button>
+              <button id="workspace-panel-mindmap" onclick="switchWorkspacePanel('mindmap')"
+                class="rounded-lg px-3 py-2 text-sm font-semibold text-zinc-400 transition hover:bg-zinc-800 hover:text-zinc-100">Mind Map</button>
+              <button id="workspace-panel-chat" onclick="switchWorkspacePanel('chat')"
+                class="rounded-lg px-3 py-2 text-sm font-semibold text-zinc-400 transition hover:bg-zinc-800 hover:text-zinc-100">AI Chat</button>
+              <button id="workspace-panel-more" onclick="switchWorkspacePanel('more')"
+                class="rounded-lg px-3 py-2 text-sm font-semibold text-zinc-400 transition hover:bg-zinc-800 hover:text-zinc-100">More</button>
+            </div>
+          </div>
+
+          <div class="p-5">
+            <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+              <button id="workspace-ai-status"
+                class="rounded-xl bg-blue-500 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-500/20">
+                AI summary waiting
+              </button>
+              <div class="text-xs text-zinc-500">Fast transcript now, deeper AI overview after model response.</div>
+            </div>
+
+            <div id="workspace-panel-summary-content">
+              <div class="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5">
+                <h3 class="mb-3 text-xl font-bold text-zinc-100">AI Overview</h3>
+                <div id="workspace-summary" class="prose text-zinc-300 leading-relaxed">
+                  Submit a video to generate an easy-to-understand summary.
+                </div>
+              </div>
+
+              <div class="mt-5 grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div class="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5">
+                  <h3 class="mb-3 text-base font-bold text-zinc-100">Key Insights</h3>
+                  <ul id="workspace-insights" class="space-y-3 text-sm text-zinc-400">
+                    <li>Insights will appear after AI analysis.</li>
+                  </ul>
+                </div>
+
+                <div class="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5">
+                  <h3 class="mb-3 text-base font-bold text-zinc-100">Action Points</h3>
+                  <ul id="workspace-takeaways" class="space-y-3 text-sm text-zinc-400">
+                    <li>Actionable takeaways will appear here.</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div id="workspace-panel-mindmap-content" class="hidden">
+              <div class="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5">
+                <h3 class="mb-4 text-xl font-bold text-zinc-100">Mind Map</h3>
+                <div id="mindmap-content" class="grid grid-cols-1 gap-3 text-sm text-zinc-300">
+                  <div class="rounded-xl border border-zinc-800 bg-zinc-950/70 p-4 text-zinc-500">Generate a summary to build the mind map.</div>
+                </div>
+              </div>
+            </div>
+
+            <div id="workspace-panel-chat-content" class="hidden">
+              <div class="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5">
+                <h3 class="mb-4 text-xl font-bold text-zinc-100">AI Chat</h3>
+                <div id="chat-messages" class="mb-4 max-h-[360px] overflow-y-auto custom-scrollbar space-y-3 pr-2">
+                  <div class="rounded-xl border border-blue-500/20 bg-blue-500/10 p-4 text-sm text-blue-100">
+                    Ask a question after summarizing. I will answer from the transcript and AI notes on this page.
+                  </div>
+                </div>
+                <form id="chat-form" class="flex flex-col gap-3 sm:flex-row">
+                  <input id="chat-input" type="text" placeholder="Ask about this video..."
+                    class="min-w-0 flex-1 rounded-lg border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-zinc-100 placeholder-zinc-500 focus:border-blue-500 focus:outline-none" />
+                  <button type="submit"
+                    class="rounded-lg bg-blue-500 px-5 py-3 text-sm font-bold text-white transition hover:bg-blue-400">
+                    Ask
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            <div id="workspace-panel-more-content" class="hidden">
+              <div class="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5">
+                <h3 class="mb-4 text-xl font-bold text-zinc-100">More Tools</h3>
+                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <button onclick="copySummary()" class="rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-left text-sm font-semibold text-zinc-200 transition hover:border-blue-500/60 hover:text-white">Copy Summary</button>
+                  <button onclick="downloadSummary()" class="rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-left text-sm font-semibold text-zinc-200 transition hover:border-blue-500/60 hover:text-white">Download Report</button>
+                  <button onclick="copyTranscriptOnly()" class="rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-left text-sm font-semibold text-zinc-200 transition hover:border-blue-500/60 hover:text-white">Copy Transcript</button>
+                  <button onclick="scrollToTranscript()" class="rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-left text-sm font-semibold text-zinc-200 transition hover:border-blue-500/60 hover:text-white">View Transcript</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Loading / Skeleton State -->
+    <section id="loading-state" class="hidden max-w-5xl w-full mx-auto fade-in">
+      <div class="flex flex-col items-center justify-center py-10 mb-8">
+        <!-- Pulsing loader circle -->
+        <div class="relative w-16 h-16 mb-4">
+          <div class="absolute inset-0 rounded-full border-4 border-purple-500/20"></div>
+          <div class="absolute inset-0 rounded-full border-4 border-t-purple-500 animate-spin"></div>
+        </div>
+        <p id="loading-message" class="text-zinc-300 font-medium text-lg tracking-wide animate-pulse">
+          Analyzing video transcript with AI...
+        </p>
+        <p class="text-zinc-500 text-sm mt-1">This might take a minute depending on the video length.</p>
+      </div>
+
+      <!-- Skeleton Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-pulse">
+        <!-- Left Side Skeletons (Col-span 2) -->
+        <div class="lg:col-span-2 space-y-6">
+          <div class="bg-darkCard border border-darkBorder rounded-xl p-6 h-64">
+            <div class="h-6 bg-zinc-800 rounded w-1/4 mb-4"></div>
+            <div class="h-4 bg-zinc-800 rounded w-full mb-2"></div>
+            <div class="h-4 bg-zinc-800 rounded w-5/6 mb-2"></div>
+            <div class="h-4 bg-zinc-800 rounded w-4/5 mb-2"></div>
+            <div class="h-4 bg-zinc-800 rounded w-2/3"></div>
+          </div>
+          <div class="bg-darkCard border border-darkBorder rounded-xl p-6 h-80">
+            <div class="h-6 bg-zinc-800 rounded w-1/3 mb-6"></div>
+            <div class="h-4 bg-zinc-800 rounded w-full mb-3"></div>
+            <div class="h-4 bg-zinc-800 rounded w-11/12 mb-3"></div>
+            <div class="h-4 bg-zinc-800 rounded w-4/5"></div>
+          </div>
+        </div>
+
+        <!-- Right Side Skeletons (Col-span 1) -->
+        <div class="space-y-6">
+          <div class="bg-darkCard border border-darkBorder rounded-xl p-6 h-56">
+            <div class="h-6 bg-zinc-800 rounded w-1/2 mb-4"></div>
+            <div class="space-y-2">
+              <div class="h-3 bg-zinc-800 rounded w-full"></div>
+              <div class="h-3 bg-zinc-800 rounded w-full"></div>
+              <div class="h-3 bg-zinc-800 rounded w-5/6"></div>
+            </div>
+          </div>
+          <div class="bg-darkCard border border-darkBorder rounded-xl p-6 h-56">
+            <div class="h-6 bg-zinc-800 rounded w-1/2 mb-4"></div>
+            <div class="space-y-2">
+              <div class="h-3 bg-zinc-800 rounded w-full"></div>
+              <div class="h-3 bg-zinc-800 rounded w-full"></div>
+              <div class="h-3 bg-zinc-800 rounded w-3/4"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Error State -->
+    <section id="error-state" class="hidden max-w-2xl w-full mx-auto fade-in">
+      <div class="bg-red-950/20 border border-red-500/30 rounded-xl p-6 flex items-start space-x-4">
+        <div class="bg-red-500/10 p-2.5 rounded-lg border border-red-500/20 text-red-400 flex-shrink-0">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        </div>
+        <div class="flex-grow">
+          <h3 class="text-red-200 font-bold text-lg mb-1">Summarization Failed</h3>
+          <p id="error-message" class="text-red-300/80 text-sm leading-relaxed mb-4">
+            An unknown error occurred while trying to process the video.
+          </p>
+          <div class="bg-black/30 rounded-lg p-3 text-zinc-400 text-xs font-mono space-y-1">
+            <div class="font-semibold text-zinc-300">Suggested Troubleshooting:</div>
+            <div>• Make sure the URL is a public YouTube video (not private or deleted).</div>
+            <div>• Confirm the video has transcripts (subtitles/captions) enabled.</div>
+            <div>• Ensure your API key and quota are available in backend/.env.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Success / Results State -->
+    <section id="results-state" class="hidden w-full fade-in space-y-8">
+
+      <!-- Video Info & Action Header -->
+      <div
+        class="flex flex-col md:flex-row md:items-center justify-between bg-darkCard border border-darkBorder rounded-xl p-6 gap-4">
+        <div class="flex items-center space-x-4">
+          <div class="bg-purple-500/10 p-3 rounded-lg border border-purple-500/20 text-purple-400">
+            <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+          </div>
+          <div>
+            <h2 class="text-xl font-bold text-white tracking-wide">Video Analysis Complete</h2>
+            <a id="video-link" href="#" target="_blank"
+              class="text-blue-400 hover:text-blue-300 text-sm flex items-center mt-1 transition-colors">
+              <span id="video-url-display" class="truncate max-w-xs sm:max-w-md">https://youtube.com/watch?v=...</span>
+              <svg class="w-3.5 h-3.5 ml-1 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2"
+                viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+            </a>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex items-center space-x-3">
+          <button id="copy-btn" onclick="copySummary()"
+            class="px-4 py-2.5 rounded-lg border border-darkBorder hover:border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 text-sm font-semibold flex items-center transition-all cursor-pointer active:scale-[0.98]">
+            <span id="copy-btn-icon" class="flex items-center">
+              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+              </svg>
+            </span>
+            <span id="copy-btn-text">Copy Summary</span>
+          </button>
+
+          <button onclick="downloadSummary()"
+            class="px-4 py-2.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-zinc-600 text-white text-sm font-semibold flex items-center transition-all cursor-pointer active:scale-[0.98]">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Download Summary
+          </button>
+        </div>
+      </div>
+
+      <!-- Primary Overview -->
+      <div class="grid grid-cols-1 gap-6">
+        <!-- Card 1: Overview Summary (Full width) -->
+        <div class="bg-darkCard border border-darkBorder rounded-xl p-6 shadow-xl flex flex-col justify-between">
+          <div>
+            <div class="flex items-center space-x-2 mb-4">
+              <span class="text-xl">📝</span>
+              <h3 class="text-lg font-bold text-white tracking-wide">Video Overview</h3>
+            </div>
+            <div id="overview-summary" class="prose text-zinc-300 leading-relaxed text-base">
+              <!-- Summary populated by JS -->
+            </div>
+          </div>
+          <div class="border-t border-darkBorder/60 pt-4 mt-4 flex items-center justify-between text-xs text-zinc-500">
+            <span>Structured Overview</span>
+            <span>AI Summarizer</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Dash Content (Grid layout) -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Left Column: Tabs & Active mode details (Col-span 2) -->
+        <div class="lg:col-span-2 flex flex-col space-y-6">
+
+          <!-- Mode Selector tabs -->
+          <div class="bg-darkCard border border-darkBorder rounded-xl p-3 shadow-md flex flex-wrap gap-2">
+            <button id="tab-study" onclick="setMode('study')"
+              class="flex-1 min-w-[120px] px-4 py-2.5 text-xs sm:text-sm font-semibold rounded-lg border transition-all duration-200 flex items-center justify-center cursor-pointer">
+              <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222" />
+              </svg>
+              Study Mode
+            </button>
+            <button id="tab-productivity" onclick="setMode('productivity')"
+              class="flex-1 min-w-[120px] px-4 py-2.5 text-xs sm:text-sm font-semibold rounded-lg border transition-all duration-200 flex items-center justify-center cursor-pointer">
+              <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              Productivity
+            </button>
+            <button id="tab-business" onclick="setMode('business')"
+              class="flex-1 min-w-[120px] px-4 py-2.5 text-xs sm:text-sm font-semibold rounded-lg border transition-all duration-200 flex items-center justify-center cursor-pointer">
+              <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+              Business
+            </button>
+            <button id="tab-eli5" onclick="setMode('eli5')"
+              class="flex-1 min-w-[120px] px-4 py-2.5 text-xs sm:text-sm font-semibold rounded-lg border transition-all duration-200 flex items-center justify-center cursor-pointer">
+              <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+              </svg>
+              ELI5 Mode
+            </button>
+          </div>
+
+          <!-- Card 5: Active Mode Content -->
+          <div
+            class="bg-darkCard border border-darkBorder rounded-xl p-6 shadow-xl flex-grow min-h-[300px] flex flex-col justify-between">
+            <div>
+              <h3 id="active-mode-title"
+                class="text-lg font-bold text-white mb-4 border-b border-darkBorder/40 pb-3 tracking-wide">
+                Active Mode Breakdown
+              </h3>
+              <div id="active-mode-content" class="prose text-zinc-300 leading-relaxed text-sm">
+                <!-- Content populated dynamically -->
+              </div>
+            </div>
+            <div class="text-zinc-500 text-xs border-t border-darkBorder/40 pt-4 mt-6">
+              Switch modes using the selector above to analyze this content through different specialist lenses.
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column: Micro Insights (Col-span 1) -->
+        <div class="space-y-6">
+
+          <!-- Card 2: Key Insights -->
+          <div class="bg-darkCard border border-darkBorder rounded-xl p-6 shadow-lg">
+            <h4 class="font-bold text-white text-base mb-4 flex items-center tracking-wide">
+              <svg class="w-5 h-5 text-yellow-400 mr-2 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2"
+                viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M9.663 17h4.673M12 3v1m6.364.364l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+              </svg>
+              Key Insights
+            </h4>
+            <ul id="key-insights" class="space-y-3.5 text-zinc-300 text-sm leading-relaxed">
+              <!-- Populated dynamically -->
+            </ul>
+          </div>
+
+          <!-- Card 3: Actionable Takeaways -->
+          <div class="bg-darkCard border border-darkBorder rounded-xl p-6 shadow-lg">
+            <h4 class="font-bold text-white text-base mb-4 flex items-center tracking-wide">
+              <svg class="w-5 h-5 text-emerald-400 mr-2 flex-shrink-0" fill="none" stroke="currentColor"
+                stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Actionable Takeaways
+            </h4>
+            <ol id="actionable-takeaways" class="space-y-3.5 text-zinc-300 text-sm leading-relaxed">
+              <!-- Populated dynamically -->
+            </ol>
+          </div>
+
+          <!-- Card 4: Quick Notes -->
+          <div class="bg-darkCard border border-darkBorder rounded-xl p-6 shadow-lg">
+            <h4 class="font-bold text-white text-base mb-4 flex items-center tracking-wide">
+              <svg class="w-5 h-5 text-blue-400 mr-2 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2"
+                viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+              </svg>
+              Quick Notes
+            </h4>
+            <ul id="quick-notes" class="space-y-2.5 text-zinc-400 text-xs leading-relaxed list-disc list-inside">
+              <!-- Populated dynamically -->
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Collapsible Transcript Viewer -->
+      <div class="bg-darkCard border border-darkBorder rounded-xl shadow-lg overflow-hidden">
+        <button onclick="toggleTranscript()"
+          class="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-zinc-800/40 transition-colors duration-200 cursor-pointer">
+          <div class="flex items-center space-x-2">
+            <span class="text-lg">📜</span>
+            <h4 class="font-bold text-white text-base tracking-wide">View Cleaned Transcript</h4>
+          </div>
+          <!-- Chevron Icon -->
+          <svg id="transcript-chevron" class="w-5 h-5 text-zinc-400 transform transition-transform duration-300"
+            fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+
+        <div id="transcript-container" class="hidden border-t border-darkBorder/40 bg-black/20">
+          <div class="p-6">
+            <div class="flex justify-between items-center mb-3">
+              <span class="text-xs text-zinc-500">Note: Filler words like "um", "uh", "like", "you know" have been
+                automatically removed.</span>
+              <button onclick="copyTranscriptOnly()"
+                class="text-xs text-blue-400 hover:text-blue-300 flex items-center transition-colors cursor-pointer">
+                <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                Copy Transcript
+              </button>
+            </div>
+            <div id="raw-transcript"
+              class="max-h-72 overflow-y-auto custom-scrollbar bg-black/40 border border-darkBorder p-4 rounded-lg font-mono text-zinc-400 text-xs leading-relaxed whitespace-pre-wrap select-text">
+              <!-- Transcript populated by JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- Footer Section -->
+  <footer class="border-t border-darkBorder/60 py-6 mt-12 bg-black/20 text-center text-xs text-zinc-500">
+    <div class="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div>© 2026 TubeAI Summarizer. All rights reserved. Built using FastAPI & Advanced AI.</div>
+      <div class="flex space-x-4">
+        <a href="https://github.com/HarshJNS" target="_blank" class="hover:text-zinc-300 transition-colors">GitHub</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Global state for keeping response data
+    let currentSummaryData = null;
+    let currentMode = 'study';
+    let isTranscriptOpen = false;
+    let loadingInterval = null;
+    let currentPreviewVideoId = null;
+    let thumbnailAttempt = 'maxresdefault';
+    let transcriptDebounce = null;
+    let currentTranscriptData = null;
+    let currentTranscriptUrl = '';
+    const urlParams = new URLSearchParams(window.location.search);
+    const configuredApiBaseUrl = urlParams.get('api') || localStorage.getItem('tubeai_api_base_url');
+    const isLocalFrontend = ['localhost', '127.0.0.1', ''].includes(window.location.hostname);
+    const API_BASE_URL = (configuredApiBaseUrl || (isLocalFrontend ? 'http://localhost:8000' : '')).replace(/\/$/, '');
+
+    if (urlParams.get('api')) {
+      localStorage.setItem('tubeai_api_base_url', API_BASE_URL);
+    }
+
+    function apiUrl(path) {
+      return `${API_BASE_URL}${path}`;
+    }
+
+    function escapeHtml(value) {
+      return String(value || '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+      }[char]));
+    }
+
+    // Extracts a YouTube video ID without creating a YouTube player.
+    function extractVideoId(url) {
+      if (!url || typeof url !== 'string') return null;
+
+      const value = url.trim();
+      const idPattern = /^[a-zA-Z0-9_-]{11}$/;
+
+      if (idPattern.test(value)) {
+        return value;
+      }
+
+      try {
+        const parsedUrl = new URL(value.startsWith('http') ? value : `https://${value}`);
+        const host = parsedUrl.hostname.replace(/^www\./, '').replace(/^m\./, '');
+
+        if (host === 'youtu.be') {
+          const id = parsedUrl.pathname.split('/').filter(Boolean)[0];
+          return idPattern.test(id) ? id : null;
+        }
+
+        if (host === 'youtube.com' || host === 'youtube-nocookie.com') {
+          const watchId = parsedUrl.searchParams.get('v');
+          if (idPattern.test(watchId)) return watchId;
+
+          const pathParts = parsedUrl.pathname.split('/').filter(Boolean);
+          const idFromPath = ['embed', 'shorts', 'v', 'e'].includes(pathParts[0]) ? pathParts[1] : null;
+          return idPattern.test(idFromPath) ? idFromPath : null;
+        }
+      } catch {
+        const fallbackMatch = value.match(/(?:v=|youtu\.be\/|embed\/|shorts\/|\/v\/|\/e\/)([a-zA-Z0-9_-]{11})/);
+        return fallbackMatch ? fallbackMatch[1] : null;
+      }
+
+      return null;
+    }
+
+    function setPreviewError(title, description) {
+      document.getElementById('thumbnail-skeleton').classList.add('hidden');
+      document.getElementById('video-thumbnail').classList.add('opacity-0');
+      document.getElementById('thumbnail-error-title').textContent = title;
+      document.getElementById('thumbnail-error-description').textContent = description;
+      document.getElementById('thumbnail-error').classList.remove('hidden');
+    }
+
+    function setThumbnailSource(videoId, quality = 'maxresdefault') {
+      const thumbnail = document.getElementById('video-thumbnail');
+      thumbnailAttempt = quality;
+      document.getElementById('thumbnail-error').classList.add('hidden');
+      document.getElementById('thumbnail-skeleton').classList.remove('hidden');
+      thumbnail.classList.add('opacity-0');
+      thumbnail.src = `https://img.youtube.com/vi/${videoId}/${quality}.jpg`;
+    }
+
+    function formatTimestamp(seconds) {
+      const totalSeconds = Math.max(0, Math.floor(seconds || 0));
+      const minutes = Math.floor(totalSeconds / 60);
+      const remainingSeconds = String(totalSeconds % 60).padStart(2, '0');
+      return `${minutes}:${remainingSeconds}`;
+    }
+
+    function setWorkspaceThumbnail(videoId) {
+      const image = document.getElementById('workspace-thumbnail');
+      const skeleton = document.getElementById('workspace-thumbnail-skeleton');
+      skeleton.classList.remove('hidden');
+      image.classList.add('opacity-0');
+      image.src = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+    }
+
+    document.getElementById('workspace-thumbnail').addEventListener('load', () => {
+      document.getElementById('workspace-thumbnail-skeleton').classList.add('hidden');
+      document.getElementById('workspace-thumbnail').classList.remove('opacity-0');
+    });
+
+    document.getElementById('workspace-thumbnail').addEventListener('error', () => {
+      const videoId = currentPreviewVideoId;
+      const image = document.getElementById('workspace-thumbnail');
+      if (videoId && image.src.includes('maxresdefault')) {
+        image.src = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+        return;
+      }
+      document.getElementById('workspace-thumbnail-skeleton').classList.add('hidden');
+    });
+
+    function resetWorkspace(videoId, videoUrl) {
+      currentTranscriptData = null;
+      currentTranscriptUrl = '';
+      currentSummaryData = null;
+      document.getElementById('workspace-state').classList.remove('hidden');
+      document.getElementById('workspace-youtube-link').href = `https://www.youtube.com/watch?v=${videoId}`;
+      document.getElementById('workspace-title').textContent = 'Video Workspace';
+      document.getElementById('workspace-subtitle').textContent = 'Fetching transcript timestamps...';
+      document.getElementById('transcript-status').textContent = 'Loading timestamped transcript...';
+      document.getElementById('transcript-status').classList.remove('hidden');
+      document.getElementById('timestamp-list').classList.add('hidden');
+      document.getElementById('timestamp-list').innerHTML = '';
+      document.getElementById('workspace-ai-status').textContent = 'AI summary waiting';
+      document.getElementById('workspace-summary').innerHTML = 'Transcript loads first. AI overview will appear after summarization.';
+      document.getElementById('workspace-insights').innerHTML = '<li>Insights will appear after AI analysis.</li>';
+      document.getElementById('workspace-takeaways').innerHTML = '<li>Actionable takeaways will appear here.</li>';
+      document.getElementById('workspace-chapters-panel').innerHTML = '<div class="rounded-xl border border-zinc-800 bg-zinc-900/70 p-4 text-sm text-zinc-400">Chapters will appear after the transcript loads.</div>';
+      document.getElementById('mindmap-content').innerHTML = '<div class="rounded-xl border border-zinc-800 bg-zinc-950/70 p-4 text-zinc-500">Generate a summary to build the mind map.</div>';
+      document.getElementById('chat-messages').innerHTML = '<div class="rounded-xl border border-blue-500/20 bg-blue-500/10 p-4 text-sm text-blue-100">Ask a question after summarizing. I will answer from the transcript and AI notes on this page.</div>';
+      switchTranscriptView('transcript');
+      switchWorkspacePanel('summary');
+      setWorkspaceThumbnail(videoId);
+    }
+
+    function renderTranscriptSegments(data) {
+      const timestampList = document.getElementById('timestamp-list');
+      const transcriptStatus = document.getElementById('transcript-status');
+      const blocks = data.blocks || data.segments || [];
+
+      timestampList.innerHTML = blocks.map(block => `
+        <article class="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 transition hover:border-blue-500/40 hover:bg-zinc-900">
+          <div class="mb-2 text-sm font-bold text-blue-400">
+            ${formatTimestamp(block.start)}-${formatTimestamp(block.end || (block.start + block.duration))}
+          </div>
+          <p class="text-sm leading-7 text-zinc-300">${escapeHtml(block.text)}</p>
+        </article>
+      `).join('');
+
+      transcriptStatus.classList.add('hidden');
+      timestampList.classList.remove('hidden');
+      document.getElementById('workspace-subtitle').textContent = `${blocks.length} transcript time blocks loaded`;
+      renderChapters(blocks);
+    }
+
+    function renderChapters(blocks) {
+      const chaptersPanel = document.getElementById('workspace-chapters-panel');
+      if (!blocks.length) {
+        chaptersPanel.innerHTML = '<div class="rounded-xl border border-zinc-800 bg-zinc-900/70 p-4 text-sm text-zinc-400">No transcript blocks were available for chapters.</div>';
+        return;
+      }
+
+      const chapterCount = Math.min(8, Math.max(3, Math.ceil(blocks.length / 2)));
+      const groupSize = Math.ceil(blocks.length / chapterCount);
+      const chapters = [];
+
+      for (let index = 0; index < blocks.length; index += groupSize) {
+        const group = blocks.slice(index, index + groupSize);
+        const text = group.map(block => block.text).join(' ');
+        const words = text.split(/\s+/).filter(Boolean);
+        const title = words.slice(0, 8).join(' ').replace(/[♪()[\]]/g, '').trim() || `Chapter ${chapters.length + 1}`;
+        chapters.push({
+          start: group[0].start,
+          end: group[group.length - 1].end || (group[group.length - 1].start + group[group.length - 1].duration),
+          title,
+          detail: words.slice(0, 30).join(' ')
+        });
+      }
+
+      chaptersPanel.innerHTML = chapters.map((chapter, index) => `
+        <article class="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 transition hover:border-blue-500/40 hover:bg-zinc-900">
+          <div class="mb-2 flex items-center justify-between gap-3">
+            <h3 class="text-sm font-bold text-zinc-100">Chapter ${index + 1}: ${escapeHtml(chapter.title)}</h3>
+            <span class="text-xs font-bold text-blue-400">${formatTimestamp(chapter.start)}-${formatTimestamp(chapter.end)}</span>
+          </div>
+          <p class="text-sm leading-6 text-zinc-400">${escapeHtml(chapter.detail)}</p>
+        </article>
+      `).join('');
+    }
+
+    async function loadTranscriptWorkspace(videoUrl, options = {}) {
+      const videoId = extractVideoId(videoUrl);
+      if (!videoId) return null;
+
+      if (currentTranscriptData && currentTranscriptUrl === videoUrl) {
+        return currentTranscriptData;
+      }
+
+      resetWorkspace(videoId, videoUrl);
+
+      try {
+        const response = await fetch(apiUrl('/transcript'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: videoUrl })
+        });
+
+        if (!response.ok) {
+          const errBody = await response.json().catch(() => ({}));
+          throw new Error(errBody.detail || `Server responded with HTTP status ${response.status}`);
+        }
+
+        const data = await response.json();
+        currentTranscriptData = data;
+        currentTranscriptUrl = videoUrl;
+        renderTranscriptSegments(data);
+        return data;
+      } catch (err) {
+        if (!options.silent) {
+          document.getElementById('transcript-status').textContent = err.message || 'Could not load transcript timestamps.';
+          document.getElementById('workspace-subtitle').textContent = 'Transcript unavailable for this video.';
+        }
+        throw err;
+      }
+    }
+
+    function renderWorkspaceSummary(data) {
+      document.getElementById('workspace-ai-status').textContent = data.fallback ? 'Local summary ready' : 'AI summary ready';
+      document.getElementById('workspace-summary').innerHTML = marked.parse(data.summary || 'No summary generated.');
+      document.getElementById('workspace-insights').innerHTML = (data.key_insights || []).map(insight => `
+        <li class="flex gap-2">
+          <span class="mt-1 h-1.5 w-1.5 rounded-full bg-blue-400 flex-shrink-0"></span>
+          <span>${insight}</span>
+        </li>
+      `).join('') || '<li>No insights generated.</li>';
+      document.getElementById('workspace-takeaways').innerHTML = (data.takeaways || []).map((takeaway, index) => `
+        <li class="flex gap-3">
+          <span class="flex h-6 w-6 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-500/10 text-xs font-bold text-emerald-300 flex-shrink-0">${index + 1}</span>
+          <span>${takeaway}</span>
+        </li>
+      `).join('') || '<li>No takeaways generated.</li>';
+      renderMindMap(data);
+    }
+
+    function renderMindMap(data) {
+      const center = data.video_id ? `Video ${data.video_id}` : 'Video Summary';
+      const branches = [
+        { title: 'Overview', items: [data.summary || 'No summary available.'] },
+        { title: 'Insights', items: data.key_insights || [] },
+        { title: 'Actions', items: data.takeaways || [] },
+        { title: 'Notes', items: data.notes || [] }
+      ];
+
+      document.getElementById('mindmap-content').innerHTML = `
+        <div class="rounded-xl border border-blue-500/30 bg-blue-500/10 p-4 text-center text-base font-bold text-blue-100">${escapeHtml(center)}</div>
+        <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+          ${branches.map(branch => `
+            <section class="rounded-xl border border-zinc-800 bg-zinc-950/80 p-4">
+              <h4 class="mb-3 text-sm font-bold text-zinc-100">${escapeHtml(branch.title)}</h4>
+              <ul class="space-y-2 text-sm text-zinc-400">
+                ${branch.items.slice(0, 4).map(item => `<li class="leading-6">• ${escapeHtml(String(item).slice(0, 220))}</li>`).join('') || '<li>No data yet.</li>'}
+              </ul>
+            </section>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    function setActiveButton(buttonId, buttonIds) {
+      buttonIds.forEach(id => {
+        const button = document.getElementById(id);
+        if (!button) return;
+        if (id === buttonId) {
+          button.className = 'rounded-lg bg-blue-500/15 px-3 py-2 text-sm font-semibold text-blue-300 border border-blue-500/30';
+        } else {
+          button.className = 'rounded-lg px-3 py-2 text-sm font-semibold text-zinc-400 transition hover:bg-zinc-800 hover:text-zinc-100';
+        }
+      });
+    }
+
+    function switchTranscriptView(view) {
+      const isTranscript = view === 'transcript';
+      document.getElementById('workspace-transcript-panel').classList.toggle('hidden', !isTranscript);
+      document.getElementById('workspace-chapters-panel').classList.toggle('hidden', isTranscript);
+      setActiveButton(
+        isTranscript ? 'workspace-tab-transcript' : 'workspace-tab-chapters',
+        ['workspace-tab-transcript', 'workspace-tab-chapters']
+      );
+    }
+
+    function switchWorkspacePanel(panel) {
+      ['summary', 'mindmap', 'chat', 'more'].forEach(name => {
+        document.getElementById(`workspace-panel-${name}-content`).classList.toggle('hidden', name !== panel);
+      });
+      setActiveButton(`workspace-panel-${panel}`, [
+        'workspace-panel-summary',
+        'workspace-panel-mindmap',
+        'workspace-panel-chat',
+        'workspace-panel-more'
+      ]);
+    }
+
+    function addChatMessage(role, message) {
+      const wrapper = document.createElement('div');
+      wrapper.className = role === 'user'
+        ? 'ml-auto max-w-[85%] rounded-xl border border-purple-500/30 bg-purple-500/10 p-3 text-sm text-purple-50'
+        : 'max-w-[90%] rounded-xl border border-zinc-800 bg-zinc-950/80 p-3 text-sm leading-6 text-zinc-300';
+      wrapper.textContent = message;
+      document.getElementById('chat-messages').appendChild(wrapper);
+      wrapper.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function getVideoChatContext() {
+      if (!currentSummaryData && !currentTranscriptData) return '';
+      return [
+        currentSummaryData?.summary ? `Summary:\n${currentSummaryData.summary}` : '',
+        currentSummaryData?.key_insights?.length ? `Key insights:\n${currentSummaryData.key_insights.join('\n')}` : '',
+        currentSummaryData?.takeaways?.length ? `Takeaways:\n${currentSummaryData.takeaways.join('\n')}` : '',
+        currentSummaryData?.notes?.length ? `Notes:\n${currentSummaryData.notes.join('\n')}` : '',
+        currentSummaryData?.study_mode ? `Study mode:\n${currentSummaryData.study_mode}` : '',
+        currentSummaryData?.raw_transcript || currentTranscriptData?.raw_transcript
+          ? `Transcript:\n${currentSummaryData?.raw_transcript || currentTranscriptData?.raw_transcript}`
+          : ''
+      ].filter(Boolean).join('\n\n');
+    }
+
+    function answerFromCurrentVideo(question) {
+      if (!currentSummaryData) {
+        return 'Summarize a video first, then I can answer using its transcript and AI notes.';
+      }
+
+      const normalizedQuestion = question.toLowerCase();
+      if (normalizedQuestion.includes('summary') || normalizedQuestion.includes('about')) {
+        return currentSummaryData.summary || 'No summary is available yet.';
+      }
+      if (normalizedQuestion.includes('takeaway') || normalizedQuestion.includes('action') || normalizedQuestion.includes('step')) {
+        return (currentSummaryData.takeaways || []).map((item, index) => `${index + 1}. ${item}`).join('\n') || 'No takeaways were generated.';
+      }
+      if (normalizedQuestion.includes('insight') || normalizedQuestion.includes('key')) {
+        return (currentSummaryData.key_insights || []).map(item => `• ${item}`).join('\n') || 'No key insights were generated.';
+      }
+      if (normalizedQuestion.includes('eli5') || normalizedQuestion.includes('simple')) {
+        return currentSummaryData.eli5 || 'No simple explanation is available yet.';
+      }
+
+      const transcript = currentSummaryData.raw_transcript || currentTranscriptData?.raw_transcript || '';
+      const terms = normalizedQuestion.split(/\W+/).filter(word => word.length > 3);
+      const sentences = transcript.split(/(?<=[.!?])\s+|♪/).map(sentence => sentence.trim()).filter(Boolean);
+      const matches = sentences.filter(sentence => {
+        const lowerSentence = sentence.toLowerCase();
+        return terms.some(term => lowerSentence.includes(term));
+      }).slice(0, 3);
+
+      if (matches.length) {
+        return `Here is what I found in the transcript:\n${matches.map(match => `• ${match}`).join('\n')}`;
+      }
+
+      return `I could not find an exact transcript match, but the main answer from the AI notes is:\n${currentSummaryData.summary || 'No summary is available.'}`;
+    }
+
+    async function askVideoChat(question) {
+      const context = getVideoChatContext();
+      if (!context) {
+        return 'Summarize a video first, then I can answer using its transcript and AI notes.';
+      }
+
+      try {
+        const response = await fetch(apiUrl('/chat'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question, context })
+        });
+
+        if (!response.ok) {
+          const errBody = await response.json().catch(() => ({}));
+          throw new Error(errBody.detail || `Server responded with HTTP status ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data.answer || answerFromCurrentVideo(question);
+      } catch (err) {
+        return `${answerFromCurrentVideo(question)}\n\nAI chat fallback note: ${err.message || 'backend chat was unavailable'}`;
+      }
+    }
+
+    function handleUrlInput() {
+      updateVideoPreview();
+
+      const videoUrl = document.getElementById('video-url').value.trim();
+      const videoId = extractVideoId(videoUrl);
+      clearTimeout(transcriptDebounce);
+
+      if (!videoId) return;
+
+      transcriptDebounce = setTimeout(() => {
+        loadTranscriptWorkspace(videoUrl).catch(() => {
+          // The workspace displays the transcript-specific message inline.
+        });
+      }, 700);
+    }
+
+    // Update video preview dynamically as the user types/pastes a URL
+    function updateVideoPreview() {
+      const urlInput = document.getElementById('video-url');
+      const videoUrl = urlInput.value.trim();
+      const videoId = extractVideoId(videoUrl);
+
+      const previewSection = document.getElementById('video-preview-section');
+      previewSection.classList.add('hidden');
+
+      if (videoId) {
+        currentPreviewVideoId = videoId;
+      } else if (videoUrl) {
+        currentPreviewVideoId = null;
+      } else {
+        currentPreviewVideoId = null;
+      }
+    }
+
+    document.getElementById('video-thumbnail').addEventListener('load', (event) => {
+      if (event.currentTarget.naturalWidth <= 120 && thumbnailAttempt === 'maxresdefault') {
+        setThumbnailSource(currentPreviewVideoId, 'hqdefault');
+        return;
+      }
+
+      if (event.currentTarget.naturalWidth <= 120) {
+        setPreviewError('Thumbnail unavailable', 'The video can still be opened on YouTube.');
+        return;
+      }
+
+      document.getElementById('thumbnail-skeleton').classList.add('hidden');
+      document.getElementById('thumbnail-error').classList.add('hidden');
+      document.getElementById('video-thumbnail').classList.remove('opacity-0');
+    });
+
+    document.getElementById('video-thumbnail').addEventListener('error', () => {
+      if (currentPreviewVideoId && thumbnailAttempt === 'maxresdefault') {
+        setThumbnailSource(currentPreviewVideoId, 'hqdefault');
+        return;
+      }
+
+      setPreviewError('Thumbnail unavailable', 'The video can still be opened on YouTube.');
+    });
+
+    // Attach listeners for URL changes
+    document.getElementById('video-url').addEventListener('input', handleUrlInput);
+    document.getElementById('video-url').addEventListener('change', handleUrlInput);
+    document.getElementById('chat-form').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const input = document.getElementById('chat-input');
+      const question = input.value.trim();
+      if (!question) return;
+      addChatMessage('user', question);
+      input.value = '';
+      addChatMessage('assistant', 'Thinking...');
+      const messages = document.getElementById('chat-messages');
+      const pendingMessage = messages.lastElementChild;
+      pendingMessage.textContent = await askVideoChat(question);
+    });
+
+    // Handle form submit
+    document.getElementById('summarize-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const urlInput = document.getElementById('video-url');
+      const videoUrl = urlInput.value.trim();
+      if (!videoUrl) return;
+
+      // Ensure preview is updated/shown immediately on submit
+      updateVideoPreview();
+      const videoId = extractVideoId(videoUrl);
+      if (!videoId) {
+        document.getElementById('error-message').textContent = "Please paste a valid YouTube URL before summarizing.";
+        showElement('error-state');
+        return;
+      }
+
+      // Reset states
+      hideElement('results-state');
+      hideElement('error-state');
+      hideElement('loading-state');
+      showElement('workspace-state');
+      document.getElementById('workspace-ai-status').textContent = 'AI summary running...';
+
+      // Disable UI during processing
+      setFormLoadingState(true);
+
+      // Cycle status messages for better UX
+      cycleLoadingMessages();
+
+      try {
+        await loadTranscriptWorkspace(videoUrl);
+        document.getElementById('workspace-ai-status').textContent = 'AI summary running...';
+
+        const response = await fetch(apiUrl('/summarize'), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            url: videoUrl,
+            raw_transcript: currentTranscriptData?.raw_transcript || ''
+          })
+        });
+
+        if (!response.ok) {
+          const errBody = await response.json().catch(() => ({}));
+          throw new Error(errBody.detail || `Server responded with HTTP status ${response.status}`);
+        }
+
+        const data = await response.json();
+        currentSummaryData = data;
+
+        // Populate and display result details
+        populateResults(data);
+        renderWorkspaceSummary(data);
+
+        // Default mode is Study Mode
+        setMode('study');
+
+        hideElement('loading-state');
+        hideElement('results-state');
+
+      } catch (err) {
+        console.error(err);
+        document.getElementById('error-message').textContent = err.message || "An unexpected error occurred. Please verify your connection, API key, or video status and try again.";
+        hideElement('loading-state');
+        showElement('error-state');
+        document.getElementById('workspace-ai-status').textContent = 'AI summary failed';
+
+        document.getElementById('error-state').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } finally {
+        setFormLoadingState(false);
+        stopCyclingMessages();
+      }
+    });
+
+    // Populate data into UI elements
+    function populateResults(data) {
+      if (data.video_id) {
+        currentPreviewVideoId = data.video_id;
+        document.getElementById('video-preview-section').classList.add('hidden');
+      }
+
+      // 1. Video Link
+      const videoLink = document.getElementById('video-link');
+      const videoUrlDisplay = document.getElementById('video-url-display');
+      videoLink.href = data.video_url || `https://www.youtube.com/watch?v=${data.video_id}`;
+      videoUrlDisplay.textContent = data.video_url || `https://www.youtube.com/watch?v=${data.video_id}`;
+
+      // 2. Card 1: Overview Summary
+      const summaryDiv = document.getElementById('overview-summary');
+      summaryDiv.innerHTML = marked.parse(data.summary || "");
+
+      // 3. Card 2: Key Insights
+      const insightsList = document.getElementById('key-insights');
+      insightsList.innerHTML = "";
+      if (data.key_insights && data.key_insights.length > 0) {
+        data.key_insights.forEach(insight => {
+          const li = document.createElement('li');
+          li.className = "flex items-start";
+          li.innerHTML = `
+            <svg class="w-4 h-4 text-yellow-400 mr-2 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364.364l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+            </svg>
+            <span>${insight}</span>
+          `;
+          insightsList.appendChild(li);
+        });
+      } else {
+        insightsList.innerHTML = "<li class='text-zinc-500 italic'>No insights generated.</li>";
+      }
+
+      // 4. Card 3: Actionable Takeaways
+      const takeawaysList = document.getElementById('actionable-takeaways');
+      takeawaysList.innerHTML = "";
+      if (data.takeaways && data.takeaways.length > 0) {
+        data.takeaways.forEach((takeaway, idx) => {
+          const li = document.createElement('li');
+          li.className = "flex items-start";
+          li.innerHTML = `
+            <span class="w-5 h-5 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-xs font-bold flex items-center justify-center mr-2.5 mt-0.5 flex-shrink-0">${idx + 1}</span>
+            <span>${takeaway}</span>
+          `;
+          takeawaysList.appendChild(li);
+        });
+      } else {
+        takeawaysList.innerHTML = "<li class='text-zinc-500 italic'>No takeaways extracted.</li>";
+      }
+
+      // 5. Card 4: Quick Notes
+      const notesList = document.getElementById('quick-notes');
+      notesList.innerHTML = "";
+      if (data.notes && data.notes.length > 0) {
+        data.notes.forEach(note => {
+          const li = document.createElement('li');
+          li.textContent = note;
+          notesList.appendChild(li);
+        });
+      } else {
+        notesList.innerHTML = "<li class='text-zinc-500 italic'>No notes extracted.</li>";
+      }
+
+      // 6. Transcript Box
+      const transcriptDiv = document.getElementById('raw-transcript');
+      transcriptDiv.textContent = data.raw_transcript || "Transcript is empty or was not fetched.";
+
+      // Close transcript by default on new searches
+      closeTranscript();
+    }
+
+    // Tab mode switcher
+    function setMode(mode) {
+      currentMode = mode;
+
+      const modes = ['study', 'productivity', 'business', 'eli5'];
+      modes.forEach(m => {
+        const btn = document.getElementById(`tab-${m}`);
+        if (m === mode) {
+          btn.className = "flex-1 min-w-[120px] px-4 py-2.5 text-xs sm:text-sm font-semibold rounded-lg border transition-all duration-200 flex items-center justify-center cursor-pointer bg-gradient-to-r from-purple-600/20 to-blue-600/20 text-white border-purple-500/60 shadow-lg shadow-purple-500/5";
+        } else {
+          btn.className = "flex-1 min-w-[120px] px-4 py-2.5 text-xs sm:text-sm font-semibold rounded-lg border transition-all duration-200 flex items-center justify-center cursor-pointer bg-zinc-800 hover:bg-zinc-700/80 text-zinc-400 hover:text-zinc-200 border-zinc-700/50";
+        }
+      });
+
+      const title = document.getElementById('active-mode-title');
+      const content = document.getElementById('active-mode-content');
+
+      if (!currentSummaryData) return;
+
+      switch (mode) {
+        case 'study':
+          title.innerHTML = `<span class="flex items-center">🎓 <span class="ml-2">Study Mode: Educational breakdown & definitions</span></span>`;
+          content.innerHTML = marked.parse(currentSummaryData.study_mode || "No content generated.");
+          break;
+        case 'productivity':
+          title.innerHTML = `<span class="flex items-center">⚡️ <span class="ml-2">Productivity Mode: Efficiency & timesavers</span></span>`;
+          content.innerHTML = marked.parse(currentSummaryData.productivity_mode || "No content generated.");
+          break;
+        case 'business':
+          title.innerHTML = `<span class="flex items-center">💼 <span class="ml-2">Business Mode: Strategy & monetization insights</span></span>`;
+          content.innerHTML = marked.parse(currentSummaryData.business_mode || "No content generated.");
+          break;
+        case 'eli5':
+          title.innerHTML = `<span class="flex items-center">✨ <span class="ml-2">ELI5 Mode: Plain English summary (no jargon)</span></span>`;
+          content.innerHTML = marked.parse(currentSummaryData.eli5 || "No content generated.");
+          break;
+      }
+    }
+
+    // Toggle Transcript Collapsible Section
+    function toggleTranscript() {
+      const container = document.getElementById('transcript-container');
+      const chevron = document.getElementById('transcript-chevron');
+
+      isTranscriptOpen = !isTranscriptOpen;
+
+      if (isTranscriptOpen) {
+        container.classList.remove('hidden');
+        chevron.classList.add('rotate-180');
+      } else {
+        container.classList.add('hidden');
+        chevron.classList.remove('rotate-180');
+      }
+    }
+
+    function closeTranscript() {
+      const container = document.getElementById('transcript-container');
+      const chevron = document.getElementById('transcript-chevron');
+      isTranscriptOpen = false;
+      container.classList.add('hidden');
+      chevron.classList.remove('rotate-180');
+    }
+
+    // Copy formatted summary report to clipboard
+    function copySummary() {
+      if (!currentSummaryData) {
+        alert('Generate a summary first.');
+        return;
+      }
+
+      const d = currentSummaryData;
+
+      // Formatting the text block
+      const textToCopy = `📺 TubeAI SUMMARY: ${d.video_url || 'YouTube Video'}
+==================================================
+
+📝 OVERVIEW:
+${d.summary}
+
+💡 KEY INSIGHTS:
+${d.key_insights.map(i => `• ${i}`).join('\n')}
+
+✅ ACTIONABLE TAKEAWAYS:
+${d.takeaways.map((t, idx) => `${idx + 1}. ${t}`).join('\n')}
+
+---
+Generated by TubeAI Summarizer.
+`;
+
+      navigator.clipboard.writeText(textToCopy).then(() => {
+        const copyText = document.getElementById('copy-btn-text');
+        const copyIcon = document.getElementById('copy-btn-icon');
+
+        const originalText = copyText.textContent;
+        copyText.textContent = 'Copied!';
+
+        const originalIcon = copyIcon.innerHTML;
+        copyIcon.innerHTML = `
+          <svg class="w-4 h-4 mr-2 text-emerald-400 animate-bounce" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+          </svg>
+        `;
+
+        setTimeout(() => {
+          copyText.textContent = originalText;
+          copyIcon.innerHTML = originalIcon;
+        }, 2000);
+      }).catch(err => {
+        alert('Failed to copy to clipboard: ' + err);
+      });
+    }
+
+    // Download formatted plain text summary
+    function downloadSummary() {
+      if (!currentSummaryData) {
+        alert('Generate a summary first.');
+        return;
+      }
+
+      const d = currentSummaryData;
+
+      const textContent = `==================================================
+TUBEAI SUMMARIZER: FULL SUMMARY REPORT
+==================================================
+Video URL: ${d.video_url || 'N/A'}
+Video ID: ${d.video_id || 'N/A'}
+
+--------------------------------------------------
+1. OVERVIEW SUMMARY
+--------------------------------------------------
+${d.summary || 'N/A'}
+
+--------------------------------------------------
+2. KEY INSIGHTS
+--------------------------------------------------
+${d.key_insights ? d.key_insights.map((ins, i) => `${i + 1}. ${ins}`).join('\n') : 'N/A'}
+
+--------------------------------------------------
+3. ACTIONABLE TAKEAWAYS
+--------------------------------------------------
+${d.takeaways ? d.takeaways.map((take, i) => `${i + 1}. ${take}`).join('\n') : 'N/A'}
+
+--------------------------------------------------
+4. QUICK NOTES
+--------------------------------------------------
+${d.notes ? d.notes.map(note => `- ${note}`).join('\n') : 'N/A'}
+
+--------------------------------------------------
+5. ANALYTICAL BREAKDOWNS
+--------------------------------------------------
+
+[STUDY BREAKDOWN]
+${d.study_mode || 'N/A'}
+
+[PRODUCTIVITY DETAILS]
+${d.productivity_mode || 'N/A'}
+
+[BUSINESS ANALYSIS]
+${d.business_mode || 'N/A'}
+
+[ELI5 (EXPLAIN LIKE I'M 5)]
+${d.eli5 || 'N/A'}
+
+==================================================
+Thank you for using TubeAI Summarizer!
+==================================================
+`;
+
+      const blob = new Blob([textContent], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `TubeAI_Summary_${d.video_id || 'Report'}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    // Copy raw transcript
+    function copyTranscriptOnly() {
+      const transcript = currentSummaryData?.raw_transcript || currentTranscriptData?.raw_transcript;
+      if (!transcript) {
+        alert('Load a transcript first.');
+        return;
+      }
+
+      navigator.clipboard.writeText(transcript).then(() => {
+        alert('Transcript copied to clipboard!');
+      }).catch(err => {
+        alert('Failed to copy transcript: ' + err);
+      });
+    }
+
+    function scrollToTranscript() {
+      switchTranscriptView('transcript');
+      document.getElementById('workspace-state').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // Helper utilities for UI control
+    function showElement(id) {
+      document.getElementById(id).classList.remove('hidden');
+    }
+
+    function hideElement(id) {
+      document.getElementById(id).classList.add('hidden');
+    }
+
+    function setFormLoadingState(isLoading) {
+      const urlInput = document.getElementById('video-url');
+      const submitBtn = document.getElementById('submit-btn');
+      const btnText = document.getElementById('btn-text');
+      const btnSpinner = document.getElementById('btn-spinner');
+
+      urlInput.disabled = isLoading;
+      submitBtn.disabled = isLoading;
+
+      if (isLoading) {
+        btnText.textContent = "Processing...";
+        btnSpinner.classList.remove('hidden');
+        submitBtn.classList.add('opacity-75', 'cursor-not-allowed');
+      } else {
+        btnText.textContent = "Summarize";
+        btnSpinner.classList.add('hidden');
+        submitBtn.classList.remove('opacity-75', 'cursor-not-allowed');
+      }
+    }
+
+    // Cycling messages while loading
+    function cycleLoadingMessages() {
+      const messages = [
+        "Fetching video transcript data...",
+        "Cleaning transcripts & removing fillers...",
+        "Structuring text into analysis blocks...",
+        "Sending transcript chunks to AI engine...",
+        "AI is analyzing content structures...",
+        "Generating business & productivity lenses...",
+        "Formatting final dashboard elements..."
+      ];
+
+      const loadingMsg = document.getElementById('loading-message');
+      let index = 0;
+      loadingMsg.textContent = messages[0];
+
+      loadingInterval = setInterval(() => {
+        index = (index + 1) % messages.length;
+        loadingMsg.textContent = messages[index];
+      }, 3500);
+    }
+
+    function stopCyclingMessages() {
+      if (loadingInterval) {
+        clearInterval(loadingInterval);
+        loadingInterval = null;
+      }
+    }
+  </script>
+</body>
+
+</html>
