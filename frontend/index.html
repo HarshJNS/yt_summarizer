@@ -705,7 +705,7 @@
     const urlParams = new URLSearchParams(window.location.search);
     const configuredApiBaseUrl = urlParams.get('api') || localStorage.getItem('tubeai_api_base_url');
     const isLocalFrontend = ['localhost', '127.0.0.1', ''].includes(window.location.hostname);
-    const API_BASE_URL = (configuredApiBaseUrl || (isLocalFrontend ? 'http://localhost:8000' : '')).replace(/\/$/, '');
+    const API_BASE_URL = (configuredApiBaseUrl || (isLocalFrontend ? 'http://localhost:8000' : '/api')).replace(/\/$/, '');
 
     if (urlParams.get('api')) {
       localStorage.setItem('tubeai_api_base_url', API_BASE_URL);
