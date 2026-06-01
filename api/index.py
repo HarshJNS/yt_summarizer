@@ -18,4 +18,4 @@ app.mount("/api", backend_app)
 
 @app.get("/")
 def serve_frontend():
-    return FileResponse(ROOT_DIR / "public" / "index.html")
+    return FileResponse(Path(__file__).with_name("index.html"))
