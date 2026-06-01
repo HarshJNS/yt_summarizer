@@ -1,9 +1,48 @@
+import os
 import re
-from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled, NoTranscriptFound, VideoUnavailable
+from youtube_transcript_api import (
+    YouTubeTranscriptApi,
+    TranscriptsDisabled,
+    NoTranscriptFound,
+    VideoUnavailable,
+    RequestBlocked,
+    IpBlocked,
+)
+from youtube_transcript_api.proxies import GenericProxyConfig, WebshareProxyConfig
 
 PREFERRED_LANGUAGES = ("en", "en-US", "en-GB", "hi")
 TRANSCRIPT_BLOCK_SECONDS = 30
 TRANSCRIPT_BLOCK_MAX_CHARS = 900
+YOUTUBE_BLOCKED_MESSAGE = (
+    "YouTube blocked transcript requests from this server. This usually happens on "
+    "cloud hosting providers like Vercel, Railway, Render, AWS, GCP, and Azure. "
+    "To make transcript fetching reliable in production, add a residential proxy "
+    "configuration to the deployment environment or run the backend from a non-blocked network."
+)
+
+
+def _build_proxy_config():
+    """
+    Optional production proxy support for cloud hosts whose IPs are blocked by YouTube.
+
+    Supported environment variables:
+    - WEBSHARE_PROXY_USERNAME + WEBSHARE_PROXY_PASSWORD
+    - YOUTUBE_HTTP_PROXY and/or YOUTUBE_HTTPS_PROXY
+    """
+    webshare_username = os.getenv("WEBSHARE_PROXY_USERNAME")
+    webshare_password = os.getenv("WEBSHARE_PROXY_PASSWORD")
+    if webshare_username and webshare_password:
+        return WebshareProxyConfig(
+            proxy_username=webshare_username,
+            proxy_password=webshare_password,
+        )
+
+    http_proxy = os.getenv("YOUTUBE_HTTP_PROXY")
+    https_proxy = os.getenv("YOUTUBE_HTTPS_PROXY")
+    if http_proxy or https_proxy:
+        return GenericProxyConfig(http_url=http_proxy, https_url=https_proxy)
+
+    return None
 
 
 def _select_best_transcript(transcript_list):
@@ -101,7 +140,7 @@ def fetch_transcript_segments(video_id: str) -> dict:
     This does not call the AI model, so it should return much faster than /summarize.
     """
     try:
-        api = YouTubeTranscriptApi()
+        api = YouTubeTranscriptApi(proxy_config=_build_proxy_config())
         transcript = _select_best_transcript(api.list(video_id))
         transcript_data = transcript.fetch(preserve_formatting=False)
 
@@ -140,9 +179,14 @@ def fetch_transcript_segments(video_id: str) -> dict:
         raise ValueError("No transcript was found for this video.")
     except VideoUnavailable:
         raise ValueError("This video is unavailable (it may be private, deleted, or geoblocked).")
+    except (RequestBlocked, IpBlocked):
+        raise ValueError(YOUTUBE_BLOCKED_MESSAGE)
     except Exception as e:
         if isinstance(e, ValueError):
             raise
+        error_text = str(e).lower()
+        if "blocked" in error_text or "cloud provider" in error_text or "too many requests" in error_text:
+            raise ValueError(YOUTUBE_BLOCKED_MESSAGE)
         raise ValueError(f"Could not retrieve transcript: {str(e)}")
 
 
